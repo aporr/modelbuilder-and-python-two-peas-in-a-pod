@@ -1,7 +1,9 @@
 # Retrieve U.S. Census poverty data for Ohio tracts and zipcodes
 # Script name: getCensusData.py
 # Created by: Center for Urban and Regional Analysis (OSU)
-
+#
+# usage: C:\Python27\ArcGIS10.7\python getCensusData.py <YEAR>
+#
 
 import os
 import sys
@@ -9,7 +11,6 @@ import urllib
 import pandas as pd
 import zipfile
 import shutil
-import arcpy
 import json
 
 # Default path for all files created by script (can be overridden by input parameter)
@@ -25,30 +26,33 @@ ACS_VARIABLES = ["NAME","GEO_ID","S0101_C01_001E","S1701_C02_001E","S1701_C03_00
 
 COLUMNS = ["NAME","GEO_ID","TOTAL","POVERTY","POVERTY_PCT"]
 
-# Get year of data to be retrieved. This is the only required parameter.
-year = arcpy.GetParameterAsText(0).strip()
+# Get year of data to be retrieved. This is the only required parameter.  Try first to get it from ArcGIS. 
+year = os.path.normpath(sys.argv[1])
 
 # Get user-specified output folder path
-outputFolder = arcpy.GetParameterAsText(1).strip()
+try:
+	outputFolder = os.path.normpath(sys.argv[2])
+except IndexError:
+	outputFolder = ""
 
-arcpy.AddMessage("Fetching data for year: " + year)
+print("Fetching data for year: " + year)
 
 # If any of the optional parameters are still undefined, set them to their
 # default values
 if(outputFolder == ""):
 	outputFolder = DEFAULT_OUTPUT_FOLDER
-	arcpy.AddMessage("Output folder is not specified. Using default folder.")
+	print("Output folder is not specified. Using default folder.")
 
 # If the output folder doesn't exist, create it.	
 if (not os.path.exists(os.path.join(outputFolder, year))):
-	arcpy.AddMessage("Specified output folder (or year-specific subfolder) does not exist. Attempting to create it recursively.")
+	print("Specified output folder (or year-specific subfolder) does not exist. Attempting to create it recursively.")
 	try:
 		os.makedirs(os.path.join(outputFolder, year))
 	except:
-		arcpy.AddError("Failed to create output folder.")
+		print("Failed to create output folder.")
 		sys.exit(-1)
 		
-arcpy.AddMessage("Using year-specific output folder: " + os.path.join(outputFolder, year))
+print("Using year-specific output folder: " + os.path.join(outputFolder, year))
 
 # Source URLs for zip files containing cartographic boundaries shapefiles
 boundariesSeq = ["zipcodes", "tracts", "states", "counties"]
@@ -72,58 +76,57 @@ dataUrl = {
 for dataset in boundariesSeq:
 	saveFile = os.path.join(outputFolder, year, dataset + "_shp.zip")
 	if (os.path.exists(saveFile)):
-		arcpy.AddMessage(dataset.capitalize() + " shapefile already exists for this year.  Skipping download.")
+		print(dataset.capitalize() + " shapefile already exists for this year.  Skipping download.")
 	else:
-		arcpy.AddMessage("Downloading shapefile for " + dataset + ". (This might take a while)")
+		print("Downloading shapefile for " + dataset + ". (This might take a while)")
 		try:
 			urllib.urlretrieve(boundariesUrl[dataset], saveFile)
 		except:
-			arcpy.AddError("Failed to download shapefile for " + dataset)
+			print("Failed to download shapefile for " + dataset)
 			sys.exit(-1)
 			
 	zipOutputFolder = os.path.join(outputFolder, year, dataset + "_shp")
 	if (os.path.exists(zipOutputFolder)):
-		arcpy.AddMessage("Deleting previously extracted data for " + dataset)	
+		print("Deleting previously extracted data for " + dataset)	
 		try:
 			shutil.rmtree(zipOutputFolder)
 		except:
-			arcpy.AddError("Failed to remove zip folder for " + dataset)
+			print("Failed to remove zip folder for " + dataset)
 			sys.exit(-1)		
 
-	arcpy.AddMessage("Unzipping data for " + dataset)
+	print("Unzipping data for " + dataset)
 	try:
 		zipFile = zipfile.ZipFile(saveFile, 'r')
 		zipFile.extractall(zipOutputFolder)
 		zipFile.close()
 	except:
-		arcpy.AddError("Failed to unzip shapefile for " + dataset)
+		print("Failed to unzip shapefile for " + dataset)
 		sys.exit(-1)
 	files = os.listdir(zipOutputFolder)
 	for file in files:
 		ext = file.split(".", 1)[1]
 		os.rename(os.path.join(zipOutputFolder, file), os.path.join(zipOutputFolder, dataset + "." + ext))
-	arcpy.SetParameterAsText(2, os.path.join(zipOutputFolder, dataset + ".shp"))
 		
 # Retrieve census data for each geography.  If data already exists, delete it and download
 # fresh data. Convert the data from JSON to CSV.
 for dataset in dataSeq:
 	saveFile = os.path.join(outputFolder, year, dataset + "_data.json")
 	if (os.path.exists(saveFile)):
-		arcpy.AddMessage(dataset.capitalize() + " data already exists for this year.  Deleting it.")
+		print(dataset.capitalize() + " data already exists for this year.  Deleting it.")
 		try:
 			os.unlink(saveFile)
 		except:
-			arcpy.AddError("Failed to delete existing data for " + dataset)
+			print("Failed to delete existing data for " + dataset)
 			sys.exit(-1)		
 
-	arcpy.AddMessage("Downloading data for " + dataset + ". (This might take a while)")
+	print("Downloading data for " + dataset + ". (This might take a while)")
 	try:
 		urllib.urlretrieve(dataUrl[dataset], saveFile)
 	except:
-		arcpy.AddError("Failed to download data for " + dataset)
+		print("Failed to download data for " + dataset)
 		sys.exit(-1)
 
-	arcpy.AddMessage("Converting data for " + dataset + " to CSV")
+	print("Converting data for " + dataset + " to CSV")
 	try:
 		with open(saveFile, "r") as f:
 			dataStr = f.read()
@@ -131,7 +134,6 @@ for dataset in dataSeq:
 		df = pd.DataFrame(data=dataObj[1:], columns=dataObj[0])
 		df.set_index("GEO_ID", inplace=True)
 		df.to_csv(saveFile.replace(".json", ".csv"))
-		arcpy.SetParameterAsText(3, saveFile.replace(".json", ".csv"))
 	except:
-		arcpy.AddError("Failed to convert data for " + dataset)
+		print("Failed to convert data for " + dataset)
 		sys.exit(-1)
