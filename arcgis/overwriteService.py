@@ -5,7 +5,7 @@
 # This script converts the MXD file to a service definition and publishes it as a hosted feature layer on ArcGIS Online. 
 # Assumptions:
 #     1. Service exists already (i.e. it will be overwritten)
-#     2. Service name is "PovertyMap"
+#     2. Service name is "OhioPovertyMap"
 #     3. Service is published in the root folder (i.e. it is not in a folder)
 #     4. User is already logged in to ArcGIS Oline
 

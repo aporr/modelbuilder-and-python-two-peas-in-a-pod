@@ -26,14 +26,20 @@ ACS_VARIABLES = ["NAME","GEO_ID","S0101_C01_001E","S1701_C02_001E","S1701_C03_00
 
 COLUMNS = ["NAME","GEO_ID","TOTAL","POVERTY","POVERTY_PCT"]
 
-# Get year of data to be retrieved. This is the only required parameter.  Try first to get it from ArcGIS. 
-year = os.path.normpath(sys.argv[1])
+# Counter for ArcGIS parameters
+i = 0;
 
-# Get user-specified output folder path
+# Get year of data to be retrieved. This is the only required parameter.  Try first to get it from ArcGIS. 
+# If it succeeds, get all remaining arguments from ArcGIS. If it fails, try to get arguments from the 
+# command line.  
+year = os.path.normpath(sys.argv[1])
+i += 1
+
 try:
 	outputFolder = os.path.normpath(sys.argv[2])
 except IndexError:
 	outputFolder = ""
+i += 1
 
 print("Fetching data for year: " + year)
 
@@ -106,6 +112,8 @@ for dataset in boundariesSeq:
 	for file in files:
 		ext = file.split(".", 1)[1]
 		os.rename(os.path.join(zipOutputFolder, file), os.path.join(zipOutputFolder, dataset + "." + ext))
+
+	i += 1
 		
 # Retrieve census data for each geography.  If data already exists, delete it and download
 # fresh data. Convert the data from JSON to CSV.
@@ -134,6 +142,8 @@ for dataset in dataSeq:
 		df = pd.DataFrame(data=dataObj[1:], columns=dataObj[0])
 		df.set_index("GEO_ID", inplace=True)
 		df.to_csv(saveFile.replace(".json", ".csv"))
+
+		i += 1
 	except:
 		print("Failed to convert data for " + dataset)
 		sys.exit(-1)

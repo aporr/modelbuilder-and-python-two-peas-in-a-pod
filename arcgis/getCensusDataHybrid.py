@@ -36,7 +36,8 @@ i = 0;
 year = arcpy.GetParameterAsText(i).strip()
 i += 1
 if(year != ""):
-	outputFolder = arcpy.GetParameterAsText(i).strip()
+	# Get user-specified folder for output data
+    outputFolder = arcpy.GetParameterAsText(i).strip()
 	i += 1
 else:
 	try: 
