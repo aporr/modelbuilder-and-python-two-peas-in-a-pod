@@ -1,0 +1,11 @@
+pages:
+  stage: deploy
+  script:
+  - mkdir .public
+  - cp -r "slides/ModelBuilder + Python - Two Peas in a Pod.slides.html" .public/index.html
+  - mv .public public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
